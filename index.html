@@ -6,20 +6,19 @@
     <meta name="theme-color" content="#4F46E5">
     <meta name="description" content="Tägliche Nahrungsergänzungsmittel Checkliste">
     <title>Supplement Checkliste</title>
-
+    
     <!-- PWA Manifest -->
-    <link rel="manifest" href="./manifest.json">
-
+    <link rel="manifest" href="manifest.json">
+    
     <!-- Icons -->
-    <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
-    <link rel="apple-touch-icon" href="./icon-192.png">
-
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-
     <style>
         body {
             margin: 0;
@@ -95,13 +94,13 @@
                 const savedDate = localStorage.getItem('lastResetDate');
                 const savedChecks = localStorage.getItem('checkedItems');
                 const savedSupplements = localStorage.getItem('supplements');
-
+                
                 const today = new Date().toDateString();
-
+                
                 if (savedSupplements) {
                     setSupplements(JSON.parse(savedSupplements));
                 }
-
+                
                 if (savedDate !== today) {
                     setCheckedItems({});
                     setLastResetDate(today);
@@ -115,30 +114,41 @@
 
             const toggleItem = (id) => {
                 if (isEditMode) return;
-                const updated = { ...checkedItems, [id]: !checkedItems[id] };
-                setCheckedItems(updated);
-                localStorage.setItem('checkedItems', JSON.stringify(updated));
+                const newCheckedItems = {
+                    ...checkedItems,
+                    [id]: !checkedItems[id]
+                };
+                setCheckedItems(newCheckedItems);
+                localStorage.setItem('checkedItems', JSON.stringify(newCheckedItems));
             };
 
             const addSupplement = () => {
                 if (!newSupplementName.trim()) return;
-
+                
+                const newId = 'custom_' + Date.now();
+                const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                
                 const newSupplement = {
-                    id: 'custom_' + Date.now(),
+                    id: newId,
                     name: newSupplementName.trim(),
-                    color: colors[Math.floor(Math.random() * colors.length)]
+                    color: randomColor
                 };
-
-                const updated = [...supplements, newSupplement];
-                setSupplements(updated);
-                localStorage.setItem('supplements', JSON.stringify(updated));
+                
+                const updatedSupplements = [...supplements, newSupplement];
+                setSupplements(updatedSupplements);
+                localStorage.setItem('supplements', JSON.stringify(updatedSupplements));
                 setNewSupplementName('');
             };
 
             const deleteSupplement = (id) => {
-                const updated = supplements.filter(s => s.id !== id);
-                setSupplements(updated);
-                localStorage.setItem('supplements', JSON.stringify(updated));
+                const updatedSupplements = supplements.filter(sup => sup.id !== id);
+                setSupplements(updatedSupplements);
+                localStorage.setItem('supplements', JSON.stringify(updatedSupplements));
+                
+                const newCheckedItems = { ...checkedItems };
+                delete newCheckedItems[id];
+                setCheckedItems(newCheckedItems);
+                localStorage.setItem('checkedItems', JSON.stringify(newCheckedItems));
             };
 
             const startEditing = (id, name) => {
@@ -147,55 +157,189 @@
             };
 
             const saveEdit = (id) => {
-                if (!editingName.trim()) return;
-                const updated = supplements.map(s =>
-                    s.id === id ? { ...s, name: editingName.trim() } : s
+                if (!editingName.trim()) {
+                    setEditingId(null);
+                    return;
+                }
+                
+                const updatedSupplements = supplements.map(sup => 
+                    sup.id === id ? { ...sup, name: editingName.trim() } : sup
                 );
-                setSupplements(updated);
-                localStorage.setItem('supplements', JSON.stringify(updated));
+                setSupplements(updatedSupplements);
+                localStorage.setItem('supplements', JSON.stringify(updatedSupplements));
                 setEditingId(null);
+                setEditingName('');
             };
 
-            const checkedCount = supplements.filter(s => checkedItems[s.id]).length;
-            const allChecked = supplements.length > 0 && checkedCount === supplements.length;
+            const allChecked = supplements.every(sup => checkedItems[sup.id]);
+            const checkedCount = supplements.filter(sup => checkedItems[sup.id]).length;
 
             return (
                 <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
                     <div className="max-w-md mx-auto">
-                        <div className="bg-white rounded-2xl shadow-xl p-6">
-                            <h1 className="text-3xl font-bold text-center mb-4">Tägliche Supplements</h1>
+                        <div className="bg-white rounded-2xl shadow-xl p-6 mb-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <h1 className="text-3xl font-bold text-gray-800">
+                                    Tägliche Supplements
+                                </h1>
+                                <button
+                                    onClick={() => setIsEditMode(!isEditMode)}
+                                    className={`p-2 rounded-lg transition-all ${
+                                        isEditMode 
+                                            ? 'bg-indigo-600 text-white' 
+                                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                                    }`}
+                                >
+                                    <EditIcon />
+                                </button>
+                            </div>
+                            <p className="text-gray-500 text-center mb-6">
+                                {new Date().toLocaleDateString('de-DE', { 
+                                    weekday: 'long', 
+                                    year: 'numeric', 
+                                    month: 'long', 
+                                    day: 'numeric' 
+                                })}
+                            </p>
+
+                            {!isEditMode && (
+                                <div className="mb-6">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-600">Fortschritt</span>
+                                        <span className="text-sm font-bold text-indigo-600">{checkedCount}/{supplements.length}</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-3">
+                                        <div 
+                                            className="bg-indigo-600 h-3 rounded-full transition-all duration-500"
+                                            style={{ width: `${supplements.length > 0 ? (checkedCount / supplements.length) * 100 : 0}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="space-y-3">
-                                {supplements.map(s => (
+                                {supplements.map(supplement => (
                                     <div
-                                        key={s.id}
-                                        onClick={() => toggleItem(s.id)}
-                                        className={`${s.color} border-2 rounded-xl p-4 cursor-pointer`}
+                                        key={supplement.id}
+                                        className={`${supplement.color} border-2 rounded-xl p-4 transition-all duration-300 ${
+                                            !isEditMode && 'cursor-pointer hover:shadow-md'
+                                        } ${
+                                            checkedItems[supplement.id] && !isEditMode ? 'opacity-60' : 'opacity-100'
+                                        }`}
                                     >
-                                        {s.name}
+                                        {editingId === supplement.id ? (
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={editingName}
+                                                    onChange={(e) => setEditingName(e.target.value)}
+                                                    onKeyPress={(e) => e.key === 'Enter' && saveEdit(supplement.id)}
+                                                    className="flex-1 px-3 py-1 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
+                                                    autoFocus
+                                                />
+                                                <button
+                                                    onClick={() => saveEdit(supplement.id)}
+                                                    className="px-3 py-1 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600"
+                                                >
+                                                    OK
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div 
+                                                onClick={() => !isEditMode && toggleItem(supplement.id)}
+                                                className="flex items-center justify-between"
+                                            >
+                                                <span className="text-lg font-semibold text-gray-800">
+                                                    {supplement.name}
+                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    {isEditMode ? (
+                                                        <>
+                                                            <button
+                                                                onClick={() => startEditing(supplement.id, supplement.name)}
+                                                                className="p-1 text-blue-600 hover:bg-blue-100 rounded"
+                                                            >
+                                                                <EditIcon />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => deleteSupplement(supplement.id)}
+                                                                className="p-1 text-red-600 hover:bg-red-100 rounded"
+                                                            >
+                                                                <TrashIcon />
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
+                                                            checkedItems[supplement.id] 
+                                                                ? 'bg-green-500 border-green-500' 
+                                                                : 'bg-white border-gray-300'
+                                                        }`}>
+                                                            {checkedItems[supplement.id] && (
+                                                                <div className="text-white">
+                                                                    <CheckIcon />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
 
-                            {allChecked && (
-                                <div className="mt-4 text-center text-green-600 font-semibold">
-                                    🎉 Alle Supplements eingenommen!
+                            {isEditMode && (
+                                <div className="mt-4 p-4 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={newSupplementName}
+                                            onChange={(e) => setNewSupplementName(e.target.value)}
+                                            onKeyPress={(e) => e.key === 'Enter' && addSupplement()}
+                                            placeholder="Neues Supplement..."
+                                            className="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
+                                        />
+                                        <button
+                                            onClick={addSupplement}
+                                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 flex items-center gap-2"
+                                        >
+                                            <PlusIcon />
+                                            Hinzufügen
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {allChecked && !isEditMode && supplements.length > 0 && (
+                                <div className="mt-6 bg-green-50 border-2 border-green-300 rounded-xl p-4 text-center">
+                                    <p className="text-green-700 font-semibold text-lg">
+                                        🎉 Alle Supplements eingenommen!
+                                    </p>
                                 </div>
                             )}
                         </div>
+
+                        <p className="text-center text-sm text-gray-600">
+                            {isEditMode 
+                                ? 'Bearbeitungsmodus: Supplements hinzufügen, bearbeiten oder löschen'
+                                : 'Die Liste wird automatisch jeden Tag zurückgesetzt'
+                            }
+                        </p>
                     </div>
                 </div>
             );
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<SupplementChecklist />);
+        ReactDOM.render(<SupplementChecklist />, document.getElementById('root'));
     </script>
 
+    <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js');
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(reg => console.log('Service Worker registriert'))
+                    .catch(err => console.log('Service Worker Fehler:', err));
             });
         }
     </script>
